@@ -1,0 +1,137 @@
+---
+- name: Advanced System Setup
+  hosts: node1
+  become: true
+  vars:
+    git_config:
+      user.name: "dennis"
+      user.email: "pcleegood@gmail.com"
+    vscode_extensions:
+      - ms-python.python
+      - vscodevim.vim
+    zsh_plugins:
+      - git
+      - brew
+      - docker
+      - macos
+      - kubernetes-tools
+      - helm
+      - kubectl
+      - kubectx
+      - kubens
+
+  tasks:
+    - name: Update and upgrade Homebrew packages
+      community.general.homebrew:
+        update_homebrew: true
+        upgrade_all: true
+      become: false
+
+    - name: Add required Homebrew taps
+      community.general.homebrew_tap:
+        name:
+          - homebrew/cask
+          - homebrew/core
+          - homebrew/cask-versions
+      become: false
+
+    - name: Install more development tools
+      community.general.homebrew:
+        name:
+          - node
+          - python
+          - visual-studio-code
+          - iterm2
+          - zsh
+          - helm
+          - kubectl
+        state: present
+      become: false
+
+    - name: Install Docker Desktop
+      community.general.homebrew_cask:
+        name: docker
+        state: present
+      become: false
+
+    - name: Install Oh My Zsh
+      ansible.builtin.shell: |
+        sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+      args:
+        creates: ~/.oh-my-zsh
+      become: false
+
+    - name: Install Homebrew Cask applications
+      community.general.homebrew_cask:
+        name:
+          - google-chrome
+          - firefox
+          - slack
+          - jira-software-cloud
+          - notion
+          - obsidian
+          - 1password
+          - 1password-cli
+          - 1password-cli-app
+
+        state: present
+      become: false
+
+    - name: Configure Git globally
+      git_config:
+        name: "{{ item.key }}"
+        value: "{{ item.value }}"
+        scope: global
+      loop: "{{ git_config | dict2items }}"
+      become: false
+
+    - name: Install VS Code extensions
+      ansible.builtin.command: code --install-extension {{ item }}
+      loop: "{{ vscode_extensions }}"
+      become: false
+      register: vscode_result
+      changed_when: "'already installed' not in vscode_result.stderr"
+
+    - name: Set ZSH as default shell
+      ansible.builtin.user:
+        name: "{{ ansible_user_id }}"
+        shell: /bin/zsh
+
+    - name: Configure Oh My Zsh
+      ansible.builtin.template:
+        src: templates/zshrc.j2
+        dest: ~/.zshrc
+        backup: yes
+      become: false
+
+    - name: Create common directories
+      ansible.builtin.file:
+        path: "~/{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - Documents/Projects
+        - Documents/Work
+        - Downloads/temp
+      become: false
+
+    - name: Set macOS preferences
+      ansible.builtin.command: "{{ item }}"
+      loop:
+        - defaults write com.apple.dock autohide -bool true
+        - defaults write NSGlobalDomain AppleShowAllExtensions -bool true
+        - defaults write com.apple.finder ShowPathbar -bool true
+      become: false
+      register: macos_prefs
+      changed_when: macos_prefs.rc == 0
+
+    - name: Restart Dock
+      ansible.builtin.command: killall Dock
+      become: false
+      when: macos_prefs.changed
+
+    - name: Install kubectx and kubens
+      community.general.homebrew:
+        name: kubectx
+        state: present
+      become: false

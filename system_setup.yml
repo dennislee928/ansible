@@ -1,0 +1,40 @@
+---
+- name: Basic System Setup
+  hosts: node1
+  become: true
+  tasks:
+    - name: Update and upgrade Homebrew packages
+      community.general.homebrew:
+        update_homebrew: true
+        upgrade_all: true
+      become: false # Homebrew 不需要 sudo
+
+    - name: Create a new user
+      ansible.builtin.user:
+        name: myuser
+        state: present
+        create_home: true
+        shell: /bin/bash
+        password: "{{ 'your_password' | password_hash('sha512') }}"
+
+    - name: Install common packages with Homebrew
+      community.general.homebrew:
+        name:
+          - vim
+          - curl
+          - wget
+          - git
+        state: present
+      become: false
+
+    - name: Set timezone
+      community.general.timezone:
+        name: Asia/Taipei
+
+    - name: Ensure SSH service is running.
+      ansible.builtin.command: |
+        launchctl load -w /System/Library/LaunchDaemons/ssh.plist
+      register: ssh_status
+      changed_when: ssh_status.rc != 0
+      failed_when: false
+      become: true

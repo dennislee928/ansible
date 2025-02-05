@@ -1,0 +1,29 @@
+# Path to your oh-my-zsh installation
+export ZSH="$HOME/.oh-my-zsh"
+
+# Theme
+ZSH_THEME="robbyrussell"
+
+# Plugins
+plugins=({{ zsh_plugins | join(' ') }})
+
+source $ZSH/oh-my-zsh.sh
+
+# User configuration
+export PATH="/usr/local/bin:$PATH"
+export LANG=en_US.UTF-8
+
+# Aliases
+alias ll='ls -la'
+alias python='python3'
+alias pip='pip3'
+
+# Kubernetes aliases
+alias k='kubectl'
+alias kns='kubens'
+alias kctx='kubectx'
+
+# Git aliases
+alias gs='git status'
+alias gp='git pull'
+alias gd='git diff'
